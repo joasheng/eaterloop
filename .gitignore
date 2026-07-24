@@ -1,0 +1,24 @@
+# dependencies
+/node_modules
+
+# next
+/.next
+/out
+
+# local environment
+.env
+.env.local
+.env.*.local
+
+# Supabase local state
+/supabase/.branches
+/supabase/.temp
+
+# logs and editors
+*.log
+.DS_Store
+.idea
+.vscode
+
+# TypeScript
+*.tsbuildinfo
