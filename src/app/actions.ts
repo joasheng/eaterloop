@@ -1,6 +1,8 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -8,12 +10,47 @@ import { ACCENT_COLORS } from "@/lib/constants";
 import { releaseIsoFromDateInput } from "@/lib/date";
 import { isDemoMode } from "@/lib/env";
 import { requireViewer } from "@/lib/data";
+import { demoProfiles } from "@/lib/demo-data";
 import { createClient } from "@/lib/supabase/server";
 
 const settingsSchema = z.object({
   displayName: z.string().trim().min(1).max(80),
   emailEnabled: z.boolean(),
 });
+
+const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+// Preview mode has no database, so persist the chosen avatar to /public/group
+// named after the demo member. It then flows through the same avatar pipeline
+// (getGroupAvatarMap) and appears everywhere, just like a production upload.
+async function saveDemoAvatar(formData: FormData) {
+  const dir = join(process.cwd(), "public", "group");
+  const base = demoProfiles[0].display_name.trim().toLowerCase();
+
+  async function clearExisting() {
+    try {
+      const files = await readdir(dir);
+      await Promise.all(
+        files
+          .filter((file) => file.replace(/\.[^.]+$/, "").toLowerCase() === base)
+          .map((file) => unlink(join(dir, file)).catch(() => {})),
+      );
+    } catch {}
+  }
+
+  const avatar = formData.get("avatar");
+  if (avatar instanceof File && avatar.size > 0) {
+    if (avatar.size > 5 * 1024 * 1024 || !AVATAR_TYPES.includes(avatar.type)) {
+      redirect("/settings?error=avatar");
+    }
+    const extension = avatar.type.split("/")[1].replace("jpeg", "jpg");
+    await mkdir(dir, { recursive: true }).catch(() => {});
+    await clearExisting();
+    await writeFile(join(dir, `${base}.${extension}`), Buffer.from(await avatar.arrayBuffer()));
+  } else if (formData.get("removeAvatar") === "on") {
+    await clearExisting();
+  }
+}
 
 export async function signOutAction() {
   if (!isDemoMode) {
@@ -24,7 +61,12 @@ export async function signOutAction() {
 }
 
 export async function updateSettingsAction(formData: FormData) {
-  if (isDemoMode) redirect("/settings?saved=demo");
+  if (isDemoMode) {
+    await saveDemoAvatar(formData);
+    revalidatePath("/settings");
+    revalidatePath("/home");
+    redirect("/settings?saved=1");
+  }
   const viewer = await requireViewer();
   const parsed = settingsSchema.safeParse({
     displayName: formData.get("displayName"),
