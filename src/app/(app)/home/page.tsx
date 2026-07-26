@@ -1,13 +1,16 @@
 import { ArrowRight, CalendarDays, Check, Clock3, PenLine } from "lucide-react";
-import { Badge, ButtonLink, GhostLink } from "@/components/ui";
+import { Badge, ButtonLink, FoodDoodle, GhostLink } from "@/components/ui";
+import { TableBanner } from "@/components/group-photos";
 import { IssueCard } from "@/components/issue-card";
 import { daysUntil, formatLongDate } from "@/lib/date";
 import { getHomeData } from "@/lib/data";
+import { getGroupPhotos } from "@/lib/photos";
 
 export const metadata = { title: "Home" };
 
 export default async function HomePage() {
   const data = await getHomeData();
+  const photos = getGroupPhotos();
   const issue = data.currentIssue;
   const answered = issue?.submission?.answers.filter((answer) => answer.body.trim() || answer.image_path).length ?? 0;
   const total = issue?.questions.length ?? 0;
@@ -61,6 +64,9 @@ export default async function HomePage() {
                 <p className="flex gap-3"><Clock3 className="h-4 w-4 shrink-0" /> Edit freely until release</p>
                 {issue.submission?.ready_at && <p className="flex gap-3 font-semibold text-[#43533e]"><Check className="h-4 w-4 shrink-0" /> Marked ready</p>}
               </div>
+              {!issue.submission?.ready_at && (
+                <p className="kitchen-note mt-5">{answered ? "so close—finish your plate 🐷" : "empty plate! grab a fork 🍴"}</p>
+              )}
             </aside>
           </div>
         </section>
@@ -74,9 +80,17 @@ export default async function HomePage() {
       )}
 
       <section className="mt-20">
+        <div className="mb-6">
+          <p className="eyebrow inline-flex items-center gap-2 text-[#746f65]"><FoodDoodle name="sparkle" className="h-4 w-4 text-[#c96f7d]" /> The usual suspects</p>
+          <h2 className="font-editorial mt-2 text-4xl sm:text-5xl">Everyone at the table</h2>
+        </div>
+        <TableBanner photos={photos} />
+      </section>
+
+      <section className="mt-20">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="eyebrow text-[#746f65]">From the shelf</p>
+            <p className="eyebrow inline-flex items-center gap-2 text-[#746f65]"><FoodDoodle name="utensils" className="h-4 w-4 text-[#c96f7d]" /> From the shelf</p>
             <h2 className="font-editorial mt-2 text-4xl sm:text-5xl">Recent letters</h2>
           </div>
           <GhostLink href="/archive" className="hidden sm:inline-flex">View all</GhostLink>

@@ -1,6 +1,6 @@
 import { DEFAULT_QUESTIONS, DEMO_GROUP_ID, DEMO_USER_ID } from "@/lib/constants";
 import { firstMonday, nextFirstMonday } from "@/lib/date";
-import type { HomeData, Issue, ManageData, Profile, PublishedIssue } from "@/lib/types";
+import type { HomeData, Issue, ManageData, MemberStatus, Profile, PublishedIssue, SubmissionState } from "@/lib/types";
 
 const memberNames = ["Joash", "Maya", "Dev", "Clara", "Niko"];
 
@@ -151,11 +151,34 @@ export function demoHomeData(): HomeData {
   };
 }
 
+export function demoMemberStatuses(): MemberStatus[] {
+  const total = DEFAULT_QUESTIONS.length;
+  const plan: Array<{ state: SubmissionState; answered: number }> = [
+    { state: "in_progress", answered: 3 },
+    { state: "ready", answered: total },
+    { state: "not_started", answered: 0 },
+    { state: "in_progress", answered: 5 },
+    { state: "ready", answered: 6 },
+  ];
+  return demoProfiles.map((profile, index) => {
+    const { state, answered } = plan[index] ?? { state: "not_started", answered: 0 };
+    return {
+      profile,
+      state,
+      answered,
+      total,
+      ready_at: state === "ready" ? demoCurrentIssue.release_at : null,
+    };
+  });
+}
+
 export function demoManageData(): ManageData {
   return {
     group: demoGroup,
     members: demoProfiles,
     upcomingIssues: [structuredClone(demoCurrentIssue)],
+    openIssue: structuredClone(demoCurrentIssue),
+    memberStatuses: demoMemberStatuses(),
   };
 }
 

@@ -1,6 +1,7 @@
-import { Bell, ImagePlus, LogOut, Mail } from "lucide-react";
+import { Bell, LogOut, Mail } from "lucide-react";
 import { signOutAction, updateSettingsAction } from "@/app/actions";
-import { Avatar, Button } from "@/components/ui";
+import { AvatarField } from "@/components/avatar-field";
+import { Button } from "@/components/ui";
 import { getHomeData } from "@/lib/data";
 
 export const metadata = { title: "Settings" };
@@ -19,16 +20,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {params.error && <p className="mt-7 rounded-2xl border border-red-900/15 bg-red-900/5 p-4 text-sm text-red-900">That change could not be saved. Check the image type and try again.</p>}
 
       <form action={updateSettingsAction} className="paper-card mt-8 space-y-8 p-6 sm:p-9">
-        <div className="flex items-center gap-5">
-          <Avatar name={profile.display_name} url={profile.avatar_url} size="lg" />
-          <div>
-            <label htmlFor="avatar" className="focus-ring inline-flex cursor-pointer items-center gap-2 rounded-full border border-black/15 px-4 py-2 text-sm font-semibold hover:bg-black/5">
-              <ImagePlus className="h-4 w-4" /> Choose photo
-            </label>
-            <input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" />
-            <p className="mt-2 text-xs text-[#746f65]">JPG, PNG, or WebP. Up to 5 MB.</p>
-          </div>
-        </div>
+        <AvatarField name={profile.display_name} url={profile.avatar_url} />
 
         <div>
           <label htmlFor="displayName" className="mb-2 block text-sm font-semibold">Display name</label>

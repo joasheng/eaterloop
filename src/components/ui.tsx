@@ -72,11 +72,53 @@ export function Badge({ children, className }: HTMLAttributes<HTMLSpanElement>) 
   );
 }
 
-export function BrandMark() {
+export function PigMark({ className }: { className?: string }) {
   return (
-    <Link href="/home" className="focus-ring inline-flex items-center gap-3 rounded-md" aria-label="Eaterloop home">
-      <span className="grid h-9 w-9 rotate-[-5deg] place-items-center rounded-[42%_58%_53%_47%] bg-[#c86b4a] text-lg text-white shadow-sm">e</span>
-      <span className="font-editorial text-2xl">eaterloop</span>
+    <svg viewBox="0 0 48 48" fill="none" className={className} aria-hidden="true">
+      <path d="M12.5 14 L9 5.5 L19.5 11 Z" fill="#e79aa6" stroke="#2a2620" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M35.5 14 L39 5.5 L28.5 11 Z" fill="#e79aa6" stroke="#2a2620" strokeWidth="2" strokeLinejoin="round" />
+      <circle cx="24" cy="26" r="15" fill="#e79aa6" stroke="#2a2620" strokeWidth="2" />
+      <ellipse cx="24" cy="29.5" rx="8" ry="5.8" fill="#f4bcc4" stroke="#2a2620" strokeWidth="2" />
+      <circle cx="21" cy="29.5" r="1.35" fill="#2a2620" />
+      <circle cx="27" cy="29.5" r="1.35" fill="#2a2620" />
+      <circle cx="18.4" cy="20.6" r="1.7" fill="#2a2620" />
+      <circle cx="29.6" cy="20.6" r="1.7" fill="#2a2620" />
+    </svg>
+  );
+}
+
+const DOODLE_PATHS: Record<string, React.ReactNode> = {
+  utensils: (
+    <>
+      <path d="M8 4v7a3 3 0 0 0 6 0V4M11 4v16" />
+      <path d="M20 4c-2 0-3 3-3 6s1 4 3 4 3-1 3-4-1-6-3-6ZM20 14v6" />
+    </>
+  ),
+  noodle: (
+    <>
+      <path d="M4 8c4-4 8 4 12 0s8-4 8-4" />
+      <path d="M4 14c4-4 8 4 12 0s8-4 8-4" />
+      <path d="M9 14v6M15 14v6" />
+    </>
+  ),
+  sparkle: <path d="M12 3c1 5 3 7 8 8-5 1-7 3-8 8-1-5-3-7-8-8 5-1 7-3 8-8Z" />,
+};
+
+export function FoodDoodle({ name, className }: { name: keyof typeof DOODLE_PATHS; className?: string }) {
+  return (
+    <svg viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      {DOODLE_PATHS[name]}
+    </svg>
+  );
+}
+
+export function BrandMark({ className }: { className?: string }) {
+  return (
+    <Link href="/home" className={cn("focus-ring group inline-flex items-center gap-2.5 rounded-md", className)} aria-label="Eaterloop home">
+      <span className="grid h-10 w-10 rotate-[-6deg] place-items-center rounded-[46%_54%_50%_50%] border border-[#2a2620]/12 bg-[#fdeef1] shadow-sm transition group-hover:rotate-[0deg]">
+        <PigMark className="h-7 w-7" />
+      </span>
+      <span className="font-editorial text-2xl lowercase tracking-tight">eaterloop</span>
     </Link>
   );
 }

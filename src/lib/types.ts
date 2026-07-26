@@ -76,8 +76,20 @@ export type HomeData = {
   memberCount: number;
 };
 
+export type SubmissionState = "ready" | "in_progress" | "not_started";
+
+export type MemberStatus = {
+  profile: Profile;
+  state: SubmissionState;
+  answered: number;
+  total: number;
+  ready_at: string | null;
+};
+
 export type ManageData = {
   group: Group;
   members: Profile[];
   upcomingIssues: Issue[];
+  openIssue: Issue | null;
+  memberStatuses: MemberStatus[];
 };

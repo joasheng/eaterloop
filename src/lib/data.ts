@@ -1,7 +1,9 @@
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { demoHomeData, demoManageData, demoPublishedIssues, getDemoIssue } from "@/lib/demo-data";
-import { hasSupabaseEnv, isDemoMode } from "@/lib/env";
+import { hasSupabaseAdminEnv, hasSupabaseEnv, isDemoMode } from "@/lib/env";
+import { getGroupAvatarMap } from "@/lib/photos";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Answer,
@@ -9,14 +11,38 @@ import type {
   HomeData,
   Issue,
   ManageData,
+  MemberStatus,
   Profile,
   PublishedIssue,
   Question,
   Submission,
+  SubmissionState,
 } from "@/lib/types";
 import { DEMO_USER_ID } from "@/lib/constants";
 
 type Row = Record<string, unknown>;
+
+// Walks demo data and assigns any profile an avatar when a file named after that
+// member exists in /public/group, so preview mode mirrors real uploaded avatars.
+function withDemoAvatars<T>(value: T): T {
+  const avatars = getGroupAvatarMap();
+  if (Object.keys(avatars).length === 0) return value;
+  const walk = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    const record = node as Record<string, unknown>;
+    if (typeof record.display_name === "string" && !record.avatar_url) {
+      const url = avatars[record.display_name.trim().toLowerCase()];
+      if (url) record.avatar_url = url;
+    }
+    Object.values(record).forEach(walk);
+  };
+  walk(value);
+  return value;
+}
 
 function mapQuestion(row: Row): Question {
   return {
@@ -128,7 +154,7 @@ export async function requireViewer() {
 }
 
 export async function getHomeData(): Promise<HomeData> {
-  if (!hasSupabaseEnv) return demoHomeData();
+  if (!hasSupabaseEnv) return withDemoAvatars(demoHomeData());
   const viewer = await requireViewer();
   const supabase = await createClient();
 
@@ -197,7 +223,7 @@ export async function getIssue(id: string): Promise<Issue | PublishedIssue> {
   if (isDemoMode) {
     const issue = getDemoIssue(id);
     if (!issue) notFound();
-    return issue;
+    return withDemoAvatars(issue);
   }
   const viewer = await requireViewer();
   const supabase = await createClient();
@@ -233,7 +259,7 @@ export async function getIssue(id: string): Promise<Issue | PublishedIssue> {
 }
 
 export async function getPublishedIssues(): Promise<PublishedIssue[]> {
-  if (isDemoMode) return structuredClone(demoPublishedIssues);
+  if (isDemoMode) return withDemoAvatars(structuredClone(demoPublishedIssues));
   const home = await getHomeData();
   const supabase = await createClient();
   const { data } = await supabase
@@ -246,7 +272,7 @@ export async function getPublishedIssues(): Promise<PublishedIssue[]> {
 }
 
 export async function getManageData(): Promise<ManageData> {
-  if (isDemoMode) return demoManageData();
+  if (isDemoMode) return withDemoAvatars(demoManageData());
   const home = await getHomeData();
   const supabase = await createClient();
   const [{ data: memberships }, { data: issues }] = await Promise.all([
@@ -270,9 +296,38 @@ export async function getManageData(): Promise<ManageData> {
       member.avatar_url = data?.signedUrl ?? null;
     }),
   );
+  const upcomingIssues = (issues ?? []).map((row) => mapIssue(row as unknown as Row));
+  const openIssue = upcomingIssues.find((issue) => issue.status === "open") ?? null;
+  const memberStatuses = await getMemberStatuses(openIssue, members);
   return {
     group: home.group,
     members,
-    upcomingIssues: (issues ?? []).map((row) => mapIssue(row as unknown as Row)),
+    upcomingIssues,
+    openIssue,
+    memberStatuses,
   };
+}
+
+// Reads only progress metadata (ready flag + which answers have content) with the
+// service-role client so every member can see the board. Answer bodies are counted
+// server-side and never leave this function, preserving pre-release privacy.
+async function getMemberStatuses(openIssue: Issue | null, members: Profile[]): Promise<MemberStatus[]> {
+  if (!openIssue || !hasSupabaseAdminEnv) return [];
+  const admin = createAdminClient();
+  const { data: submissions } = await admin
+    .from("submissions")
+    .select("user_id, ready_at, answers(body, image_path)")
+    .eq("issue_id", openIssue.id);
+  const byUser = new Map(
+    (submissions ?? []).map((submission) => [String((submission as Row).user_id), submission as Row]),
+  );
+  const total = openIssue.questions.length;
+  return members.map((member) => {
+    const submission = byUser.get(member.id);
+    const answers = Array.isArray(submission?.answers) ? (submission!.answers as Row[]) : [];
+    const answered = answers.filter((answer) => String(answer.body ?? "").trim() || answer.image_path).length;
+    const ready_at = submission?.ready_at ? String(submission.ready_at) : null;
+    const state: SubmissionState = ready_at ? "ready" : answered > 0 ? "in_progress" : "not_started";
+    return { profile: member, state, answered, total, ready_at };
+  });
 }
